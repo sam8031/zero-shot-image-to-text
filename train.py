@@ -1,82 +1,71 @@
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 from dataset import Dataset
 from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
+from model.ZeroCLIP import CLIPTextGenerator
+from torch import nn
 import clip
 
-def custom_loss(similarity_score):
-    # Define a margin threshold to penalize dissimilar captions
-    margin = 0.1
+class CaptionLoss(nn.Module):
+    def __init__(self):
+        super(CaptionLoss, self).__init__()
 
-    # Compute the loss based on the similarity score and the margin
-    loss = F.relu(margin - similarity_score)
+    def forward(self, generated_captions, ground_truth_captions):
+        # Compute the loss between the generated captions and ground truth captions
+        # For example, you could use cosine similarity or any other suitable metric
+        # Here, let's use negative cosine similarity as a loss
+        cosine_similarity = torch.nn.functional.cosine_similarity(generated_captions, ground_truth_captions)
+        loss = -torch.mean(cosine_similarity)
+        return loss
 
-    return loss.mean()  # Return the mean of the losses across the batch
+def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch_size=32):
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    model.clip.train()
 
-def train():
-    # Instantiate Dataset
+    for epoch in range(num_epochs):
+        total_loss = 0.0
+        image_paths = dataloader.dataset.data[0]
+        captions = dataloader.dataset.data[1]
+        optimizer.zero_grad()
+        generated_captions = []
+
+        for image_path in image_paths:
+            # Forward pass
+            image_features = model.get_img_feature([image_path], None)
+            condition_text = captions[image_paths.index(image_path)].split(" ")[0]
+            print(f"Catption: {captions[image_paths.index(image_path)]} Condition text: {condition_text}")
+            generated_caption = model.run(image_features,condition_text, beam_size=1)
+            generated_captions.append(generated_caption)
+
+        # Assuming 'generated_captions' and 'captions' are lists of tokenized captions (strings)
+        # Convert tokenized captions into numerical representations (indices)
+        generated_captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c)).to(model.device) for c in generated_captions]
+        captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c)).to(model.device) for c in captions]
+
+        # Compute loss
+        loss = criterion.forward(generated_captions_tensor, captions_tensor)
+
+        # Backpropagation
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+        epoch_loss = total_loss / len(image_paths)
+        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}')
+
+
+if __name__ == '__main__':
     dataset = Dataset()
 
     # Instantiate Model
-    model = CLIPTextGenerator_multigpu()  # or CLIPTextGenerator() if not using multi-gpu
+    model = CLIPTextGenerator_multigpu()
 
-    # Define Optimizer
+    criterion = CaptionLoss()
+
+    # Define optimizer
     optimizer = torch.optim.Adam(model.clip.parameters(), lr=0.001)
 
-    num_epochs = 1
-    best_loss = float('inf')
-    for epoch in range(num_epochs):
-        model.clip.train()
-        total_loss = 0.0
-        num_samples = 0
-        for image_path, caption in dataset.data:
-            print(f"Target Caption: {caption}")
-
-            optimizer.zero_grad()
-
-            # Get Image Features
-            image_features = model.get_img_feature([image_path], None)
-
-            # Generate Captions
-            output_captions = model.run(image_features, caption, beam_size=5)
-
-            # Encode the target caption
-            encoded_target_caption = clip.tokenize(caption).to(model.device)
-            encoded_target_caption = model.clip.encode_text(encoded_target_caption)
-            encoded_target_caption = encoded_target_caption / encoded_target_caption.norm(dim=-1, keepdim=True)  # Normalize without inplace operation
-
-            for generated_caption in output_captions:
-                # Split the generated caption and score
-                generated_caption_parts = generated_caption.split('%%')
-                generated_caption_text = generated_caption_parts[0].strip()  # Extract the caption text
-
-                # Encode the generated caption
-                encoded_generated_caption = clip.tokenize(generated_caption_text).to(model.device)
-                encoded_generated_caption = model.clip.encode_text(encoded_generated_caption)
-                encoded_generated_caption = encoded_generated_caption / encoded_generated_caption.norm(dim=-1, keepdim=True)  # Normalize without inplace operation
-
-                # Compute similarity score
-                similarity_score = F.cosine_similarity(encoded_generated_caption, encoded_target_caption).mean()
-
-                # Calculate the loss
-                loss = custom_loss(similarity_score)
-
-                # Backpropagation
-                loss.backward(retain_graph=True)
-
-                # Update model parameters
-                optimizer.step()
-
-                total_loss += loss.item()
-                num_samples += 1
-
-        average_loss = total_loss / num_samples
-        print(f"Epoch [{epoch+1}/{num_epochs}], Average Loss: {average_loss:.4f}")
-
-        # Save the best model based on validation loss
-        if average_loss < best_loss:
-            best_loss = average_loss
-            torch.save(model.clip.state_dict(), "best_model.pth")
-
-if __name__ == '__main__':
-    train()
+    # Train the model
+    train(model, dataset, optimizer, criterion, num_epochs=1)
