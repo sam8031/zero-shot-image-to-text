@@ -23,14 +23,15 @@ def train():
     # Define Optimizer
     optimizer = torch.optim.Adam(model.clip.parameters(), lr=0.001)
 
-    num_epochs = 5
+    num_epochs = 1
     best_loss = float('inf')
     for epoch in range(num_epochs):
         model.clip.train()
         total_loss = 0.0
         num_samples = 0
         for image_path, caption in dataset.data:
-            print(f"Caption: {caption}")
+            print(f"Target Caption: {caption}")
+
             optimizer.zero_grad()
 
             # Get Image Features
@@ -42,16 +43,20 @@ def train():
             # Encode the target caption
             encoded_target_caption = clip.tokenize(caption).to(model.device)
             encoded_target_caption = model.clip.encode_text(encoded_target_caption)
-            encoded_target_caption = encoded_target_caption / encoded_target_caption.norm(dim=-1, keepdim=True)
+            encoded_target_caption = encoded_target_caption / encoded_target_caption.norm(dim=-1, keepdim=True)  # Normalize without inplace operation
 
             for generated_caption in output_captions:
+                # Split the generated caption and score
+                generated_caption_parts = generated_caption.split('%%')
+                generated_caption_text = generated_caption_parts[0].strip()  # Extract the caption text
+
                 # Encode the generated caption
-                encoded_generated_caption = clip.tokenize(generated_caption).to(model.device)
+                encoded_generated_caption = clip.tokenize(generated_caption_text).to(model.device)
                 encoded_generated_caption = model.clip.encode_text(encoded_generated_caption)
-                encoded_generated_caption = encoded_generated_caption / encoded_generated_caption.norm(dim=-1, keepdim=True)
+                encoded_generated_caption = encoded_generated_caption / encoded_generated_caption.norm(dim=-1, keepdim=True)  # Normalize without inplace operation
 
                 # Compute similarity score
-                similarity_score = (encoded_generated_caption @ encoded_target_caption.T).squeeze()
+                similarity_score = F.cosine_similarity(encoded_generated_caption, encoded_target_caption).mean()
 
                 # Calculate the loss
                 loss = custom_loss(similarity_score)
