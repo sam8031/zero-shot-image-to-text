@@ -1,3 +1,4 @@
 .idea
 .vscode/launch.json
 clip_checkpoints/ViT-B-32.pt
+__pycache__/dataset.cpython-38.pyc
