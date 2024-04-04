@@ -40,8 +40,8 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
 
         # Assuming 'generated_captions' and 'captions' are lists of tokenized captions (strings)
         # Convert tokenized captions into numerical representations (indices)
-        generated_captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c)).to(model.device) for c in generated_captions]
-        captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c)).to(model.device) for c in captions]
+        generated_captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c).to(model.device)) for c in generated_captions]
+        captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c).to(model.device)) for c in captions]
 
         # Compute loss
         loss = criterion.forward(generated_captions_tensor, captions_tensor)
