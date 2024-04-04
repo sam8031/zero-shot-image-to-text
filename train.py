@@ -34,6 +34,7 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
         captions = dataloader.dataset.data[1]
         for image_path in image_paths:
             # Forward pass
+            optimizer.zero_grad()
             image_features = model.get_img_feature([image_path], None)
             curr_captions =" ".join(captions[:5])
             print(f"Target Captions: {curr_captions} Cond Text: {captions[0][0]}")
@@ -41,7 +42,6 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
             target_captions = captions[:5]
             captions = captions[5:]
 
-            optimizer.zero_grad()
             # Assuming 'generated_captions' and 'captions' are lists of tokenized captions (strings)
             # Convert tokenized captions into numerical representations (indices)
             generated_captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c).to(model.device)) for c in generated_captions]
