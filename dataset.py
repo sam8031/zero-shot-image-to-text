@@ -1,6 +1,6 @@
 class Dataset:
   def __init__(self):
-    self.data = self.load_data(5)
+    self.data = self.load_data(800)
 
   def __len__(self):
     return len(self.data[0])

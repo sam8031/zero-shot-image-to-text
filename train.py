@@ -15,6 +15,8 @@ class CaptionLoss(nn.Module):
         # Compute the loss between the generated captions and ground truth captions
         # For example, you could use cosine similarity or any other suitable metric
         # Here, let's use negative cosine similarity as a loss
+        generated_captions = generated_captions.float()
+        ground_truth_captions = ground_truth_captions.float()
         cosine_similarity = torch.nn.functional.cosine_similarity(generated_captions, ground_truth_captions)
         loss = -torch.mean(cosine_similarity)
         return loss
@@ -44,9 +46,10 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
         captions_tensor = [model.lm_tokenizer.convert_tokens_to_ids(clip.tokenize(c).to(model.device)) for c in captions]
 
         # Compute loss
-        loss = criterion.forward(generated_captions_tensor, captions_tensor)
+        loss = criterion.forward(torch.tensor(generated_captions_tensor), torch.tensor(captions_tensor))
 
         # Backpropagation
+        loss.requires_grad_(True)
         loss.backward()
         optimizer.step()
 
