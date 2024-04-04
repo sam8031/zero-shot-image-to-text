@@ -16,7 +16,8 @@ class Dataset:
         if i == size:
           break
         image_path, caption = line.split(",", 1)
-        image_paths.append("dataset/images/" + image_path)
+        if image_path not in image_paths:
+          image_paths.append("dataset/images/" + image_path)
         captions.append(caption)
         i += 1
 

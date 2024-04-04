@@ -32,12 +32,12 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
         total_loss = 0.0
         image_paths = dataloader.dataset.data[0]
         captions = dataloader.dataset.data[1]
+        optimizer.zero_grad()
         for image_path in image_paths:
             # Forward pass
-            optimizer.zero_grad()
             image_features = model.get_img_feature([image_path], None)
             curr_captions =" ".join(captions[:5])
-            print(f"Target Captions: {curr_captions}")
+            print(f"Target Captions: {curr_captions} Image Path: {image_path}")
             generated_captions = model.run(image_features, "Image of" , beam_size=5)
             target_captions = captions[:5]
             captions = captions[5:]
@@ -53,9 +53,9 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
             # Backpropagation
             loss.requires_grad_(True)
             loss.backward()
-            optimizer.step()
 
             total_loss += loss.item()
+        optimizer.step()
 
         epoch_loss = total_loss / len(image_paths)
         end_time = time.time()  # End timer for epoch
