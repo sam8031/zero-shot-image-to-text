@@ -37,8 +37,8 @@ def train(model, dataset, optimizer, criterion: CaptionLoss, num_epochs=5, batch
             optimizer.zero_grad()
             image_features = model.get_img_feature([image_path], None)
             curr_captions =" ".join(captions[:5])
-            print(f"Target Captions: {curr_captions} Cond Text: {captions[0][0]}")
-            generated_captions = model.run(image_features, captions[0][0] , beam_size=5)
+            print(f"Target Captions: {curr_captions}")
+            generated_captions = model.run(image_features, "Image of" , beam_size=5)
             target_captions = captions[:5]
             captions = captions[5:]
 
