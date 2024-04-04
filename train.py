@@ -30,6 +30,7 @@ def train():
         total_loss = 0.0
         num_samples = 0
         for image_path, caption in dataset.data:
+            print(f"Caption: {caption}")
             optimizer.zero_grad()
 
             # Get Image Features
@@ -41,13 +42,13 @@ def train():
             # Encode the target caption
             encoded_target_caption = clip.tokenize(caption).to(model.device)
             encoded_target_caption = model.clip.encode_text(encoded_target_caption)
-            encoded_target_caption /= encoded_target_caption.norm(dim=-1, keepdim=True)
+            encoded_target_caption = encoded_target_caption / encoded_target_caption.norm(dim=-1, keepdim=True)
 
             for generated_caption in output_captions:
                 # Encode the generated caption
                 encoded_generated_caption = clip.tokenize(generated_caption).to(model.device)
                 encoded_generated_caption = model.clip.encode_text(encoded_generated_caption)
-                encoded_generated_caption /= encoded_generated_caption.norm(dim=-1, keepdim=True)
+                encoded_generated_caption = encoded_generated_caption / encoded_generated_caption.norm(dim=-1, keepdim=True)
 
                 # Compute similarity score
                 similarity_score = (encoded_generated_caption @ encoded_target_caption.T).squeeze()
@@ -56,7 +57,7 @@ def train():
                 loss = custom_loss(similarity_score)
 
                 # Backpropagation
-                loss.backward()
+                loss.backward(retain_graph=True)
 
                 # Update model parameters
                 optimizer.step()
