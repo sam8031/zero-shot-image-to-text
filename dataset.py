@@ -1,18 +1,25 @@
 class Dataset:
-  def __init__(self):
-    self.data = self.load_data(5)
+  def __init__(self, size, path):
+    self.data = self.load_data(size, path)
 
+  def __len__(self):
+    return len(self.data[0])
 
-  def load_data(self, size):
-    data = []
-    with open("dataset/captions.txt", 'r') as file:
+  def load_data(self, size, path):
+    image_paths = []
+    captions = []
+    data = (image_paths, captions)
+    with open(path, 'r') as file:
       next(file)
       i = 0
       for line in file:
         if i == size:
           break
-        image_path, caption = line.split(",")
-        data.append(("dataset/images/" + image_path, caption))
+        image_path, caption = line.split(",", 1)
+        image_path = "dataset/images/" + image_path
+        if image_path not in image_paths:
+          image_paths.append(image_path)
+        captions.append(caption)
         i += 1
 
     return data
