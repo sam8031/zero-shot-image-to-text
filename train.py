@@ -1,9 +1,11 @@
 import yaml
 from argparse import ArgumentParser
-from pytorch_lightning import Trainer, LightningDataModule
-from data.text_image_dm import TextImageDataModule
+from pytorch_lightning import Trainer, LightningModule
+from data.text_image_dm import TextImageDataModule, TextImageDataset
 from models import CLIPWrapper
+from torch.utils.data import Dataset, DataLoader
 
+from pytorch_lightning.cli import LightningCLI
 
 
 def main(hparams):
@@ -16,8 +18,8 @@ def main(hparams):
 
     model = CLIPWrapper(hparams.model_name, config, hparams.minibatch_size)
     del hparams.model_name
-    dm = TextImageDataModule.from_argparse_args(hparams)
-    trainer = Trainer.from_argparse_args(hparams, precision=16, max_epochs=32)
+    dm = TextImageDataModule(folder=hparams.folder, batch_size=hparams.batch_size, image_size=hparams.image_size, resize_ratio=hparams.resize_ratio, shuffle=hparams.shuffle)
+    trainer = Trainer(precision=16, max_epochs=1, accelerator="gpu", devices=8, default_root_dir="checkpoints")
     trainer.fit(model, dm)
 
 
@@ -26,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, required=True)
     parser.add_argument('--minibatch_size', type=int, default=0)
     parser = TextImageDataModule.add_argparse_args(parser)
-    #parser = Trainer.add_argparse_args(parser)
+
     args = parser.parse_args()
 
     main(args)
