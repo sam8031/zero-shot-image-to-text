@@ -1,8 +1,9 @@
 import yaml
 from argparse import ArgumentParser
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, LightningDataModule
 from data.text_image_dm import TextImageDataModule
 from models import CLIPWrapper
+
 
 
 def main(hparams):
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, required=True)
     parser.add_argument('--minibatch_size', type=int, default=0)
     parser = TextImageDataModule.add_argparse_args(parser)
-    parser = Trainer.add_argparse_args(parser)
+    #parser = Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
     main(args)
