@@ -5,3 +5,6 @@ __pycache__/dataset.cpython-38.pyc
 dataset
 
 dataset/img10.txt
+__pycache__/clip_dataset.cpython-38.pyc
+__pycache__/clip_datsaset.cpython-38.pyc
+clip_model_epoch_1.pt

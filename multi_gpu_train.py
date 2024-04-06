@@ -11,6 +11,33 @@ from torch.utils.data import DataLoader, Dataset
 BATCH_SIZE = 32
 EPOCH = 1
 
+def create_logits(x1,x2,logit_scale):
+    x1 = x1 / x1.norm(dim=-1, keepdim=True)
+    x2 = x2 / x2.norm(dim=-1, keepdim=True)
+
+    # cosine similarity as logits
+    logits_per_x1 =  logit_scale*x1 @ x2.t()
+    logits_per_x2 =  logit_scale*x2 @ x1.t()
+
+    # shape = [global_batch_size, global_batch_size]
+    return logits_per_x1, logits_per_x2
+
+class CaptionCLIP(nn.Module):
+    def __init__(self, model) :
+        super(CaptionCLIP, self).__init__()
+        self.model = model
+
+    def forward(self,text):
+        return self.model.encode_text(text)
+
+class ImageCLIP(nn.Module):
+    def __init__(self, model) :
+        super(ImageCLIP, self).__init__()
+        self.model = model
+
+    def forward(self,image):
+        return self.model.encode_image(image)
+
 def get_img_and_captions_paths(captions_file, image_dir):
     list_image_path = []
     list_captions = []
@@ -38,6 +65,12 @@ def train():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 
+    model_caption = CaptionCLIP(model)
+    model_image = ImageCLIP(model)
+
+    model_caption = nn.DataParallel(model_caption)
+    model_image = nn.DataParallel(model_image)
+
     class image_caption_dataset(Dataset):
         def __init__(self, list_image_path, list_captions):
 
@@ -58,14 +91,9 @@ def train():
     dataset = image_caption_dataset(list_image_path, list_caption)
     train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, drop_last=True)
 
-    if device == "cpu":
-        model.float()
-    else:
-        clip.model.convert_weights(model)
-
     loss_img = nn.CrossEntropyLoss()
     loss_caption = nn.CrossEntropyLoss()
-    optimizer = Adam(model.parameters(), lr=5e-5, betas=(0.9,0.98), eps=1e-6, weight_decay=0.2)
+    optimizer = Adam(model.parameters(), lr=5e-5, betas=(0.9,0.98), eps=1e-6, weight_decay=0.05)
 
     # Training loop
     model.train()
@@ -80,12 +108,12 @@ def train():
 
             images, captions = batch
 
-            images = images.to(device)
-            captions = captions.to(device)
+            image_embedding = model_image(images)
+            caption_embedding = model_caption(captions)
 
-            logits_per_image, logits_per_caption = model(images, captions)
-
-            ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
+            logit_scale = model.logit_scale.exp()
+            logits_per_image, logits_per_caption = create_logits(image_embedding,caption_embedding,logit_scale)
+            ground_truth = torch.arange(BATCH_SIZE).to(device)
 
             total_loss = (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
             total_loss.backward()
