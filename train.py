@@ -11,16 +11,29 @@ from torch.utils.data import DataLoader, Dataset
 BATCH_SIZE = 32
 EPOCH = 1
 
+class image_caption_dataset(Dataset):
+    def __init__(self, list_image_path, list_captions, preprocess):
+
+        self.image_path = list_image_path
+        self.captions  = clip.tokenize(list_captions)
+        self.preprocess = preprocess
+
+    def __len__(self):
+        return len(self.captions)
+
+    def __getitem__(self, idx):
+        image = self.preprocess(Image.open(self.image_path[idx])) # Image from PIL module
+        caption = self.captions[idx]
+        return image,caption
+
 def get_img_and_captions_paths(captions_file, image_dir):
     list_image_path = []
     list_captions = []
     with open(captions_file, "r") as file:
-        next(file)
         for line in file:
-            img_name, caption = line.strip().split(",", 1)
+            img_name, caption = line.strip().split(",", 1)  # Split line into image name and captions
             list_image_path.append(image_dir + img_name)
-            list_captions.append(caption)
-
+            list_captions.append(caption.strip())
     return list_image_path, list_captions
 
 def convert_models_to_fp32(model):
@@ -38,25 +51,12 @@ def train():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 
-    class image_caption_dataset(Dataset):
-        def __init__(self, list_image_path, list_captions):
-
-            self.image_path = list_image_path
-            self.captions  = clip.tokenize(list_captions)
-
-        def __len__(self):
-            return len(self.captions)
-
-        def __getitem__(self, idx):
-            image = preprocess(Image.open(self.image_path[idx])) # Image from PIL module
-            caption = self.captions[idx]
-            return image,caption
 
     list_image_path, list_caption = get_img_and_captions_paths(captions_file, image_dir)
 
 
-    dataset = image_caption_dataset(list_image_path, list_caption)
-    train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, drop_last=True)
+    dataset = image_caption_dataset(list_image_path, list_caption, preprocess)
+    train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, drop_last=True, shuffle=True)
 
     if device == "cpu":
         model.float()
@@ -114,7 +114,6 @@ def train():
     },f"clip_model_epoch_{epoch + 1}.pt")
 
     print('Time taken for epoch: {:.2f} seconds'.format(time.time() - start_time))
-    progress_bar.clear()
 
 if __name__ == "__main__":
     train()
