@@ -73,3 +73,4 @@ Please cite our work if you use it in your research:
   year={2021}
 }
 ```
+to unzip: unzip archive.zip -d ./dataset
