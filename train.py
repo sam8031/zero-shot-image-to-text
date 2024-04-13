@@ -132,8 +132,8 @@ def train():
             progress_bar.set_postfix_str(f'Epoch {epoch + 1}/{EPOCH}, Loss: {total_loss.item():.5f}, Percentage: {(batch_idx + 1) / len(train_dataloader) * 100:.2f}%')
             progress_bar.update()
 
-    # Print average loss for the epoch
-    print(f"Average Loss for Epoch {epoch + 1}: {running_loss / len(train_dataloader)}")
+        # Print average loss for the epoch
+        print(f"Average Loss for Epoch {epoch + 1}: {running_loss / len(train_dataloader)}")
 
     # Save the model
     torch.save({
