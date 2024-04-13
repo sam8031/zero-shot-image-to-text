@@ -45,7 +45,7 @@ class image_caption_dataset(Dataset):
     def __init__(self, list_image_path, list_captions, preprocess):
 
         self.image_path = list_image_path
-        self.captions  = clip.tokenize(list_captions)
+        self.captions  = clip.tokenize(list_captions, truncate=True)
         self.preprocess = preprocess
 
     def __len__(self):
