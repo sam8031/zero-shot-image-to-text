@@ -7,9 +7,12 @@ import torch.nn as nn
 from tqdm import tqdm
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
+import csv
 
 BATCH_SIZE = 32
 EPOCH = 1
+TRAIN_FILE = "./dataset/training.csv"
+IMAGE_DIR = "dataset/images/"
 
 def create_logits(x1,x2,logit_scale):
     x1 = x1 / x1.norm(dim=-1, keepdim=True)
@@ -53,14 +56,16 @@ class image_caption_dataset(Dataset):
         caption = self.captions[idx]
         return image,caption
 
-def get_img_and_captions_paths(captions_file, image_dir):
+def get_img_and_captions_paths():
     list_image_path = []
     list_captions = []
-    with open(captions_file, "r") as file:
-        for line in file:
-            img_name, caption = line.strip().split(",", 1)  # Split line into image name and captions
-            list_image_path.append(image_dir + img_name)
-            list_captions.append(caption.strip())
+    with open(TRAIN_FILE, "r", newline='') as csvFile:
+        reader = csv.reader(csvFile, delimiter='|')
+        next(reader)
+        for row in reader:
+            image_name, caption = row[0], row[2]
+            list_image_path.append(IMAGE_DIR + image_name)
+            list_captions.append(caption)
     return list_image_path, list_captions
 
 def convert_models_to_fp32(model):
@@ -70,8 +75,6 @@ def convert_models_to_fp32(model):
 
 def train():
     # Define the root directory and captions file
-    image_dir = "dataset/images/"
-    captions_file = "dataset/captions.txt"
 
 
     # Load the CLIP model
@@ -84,7 +87,7 @@ def train():
     model_caption = nn.DataParallel(model_caption)
     model_image = nn.DataParallel(model_image)
 
-    list_image_path, list_caption = get_img_and_captions_paths(captions_file, image_dir)
+    list_image_path, list_caption = get_img_and_captions_paths()
 
 
     dataset = image_caption_dataset(list_image_path, list_caption, preprocess)

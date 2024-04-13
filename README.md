@@ -18,7 +18,7 @@
 ### To run captioning on a single image:
 
 ```bash
-$ python run.py 
+$ python run.py
 --reset_context_delta
 --caption_img_path "example_images/captions/COCO_val2014_000000097017.jpg"
 ```
@@ -26,7 +26,7 @@ $ python run.py
 ### To run model on visual arithmetic:
 
 ```bash
-$ python run.py 
+$ python run.py
 --reset_context_delta
 --end_factor 1.06
 --fusion_factor 0.95
@@ -40,8 +40,8 @@ $ python run.py
 
 ```bash
 $ python run.py
---reset_context_delta --cond_text "Image of" 
---end_factor 1.04 
+--reset_context_delta --cond_text "Image of"
+--end_factor 1.04
 --caption_img_path "example_images/real_world/simpsons.jpg"
 ```
 
@@ -49,22 +49,21 @@ $ python run.py
 
 ```bash
 $ python run.py
---reset_context_delta --cond_text "Image of text that says" 
---end_factor 1.04 
+--reset_context_delta --cond_text "Image of text that says"
+--end_factor 1.04
 --caption_img_path "example_images/OCR/welcome_sign.jpg"
 ```
 
 ### For runtime speedup using multiple gpus, use the --multi_gpu flag:
 
 ```bash
-$ CUDA_VISIBLE_DEVICES=0,1,2,3,4 python run.py 
+$ CUDA_VISIBLE_DEVICES=0,1,2,3,4 python run.py
 --reset_context_delta
 --caption_img_path "example_images/captions/COCO_val2014_000000097017.jpg"
 --multi_gpu
 ```
 
-## Citation
-Please cite our work if you use it in your research:
+## Citations
 ```
 @article{tewel2021zero,
   title={Zero-Shot Image-to-Text Generation for Visual-Semantic Arithmetic},
@@ -72,5 +71,18 @@ Please cite our work if you use it in your research:
   journal={arXiv preprint arXiv:2111.14447},
   year={2021}
 }
+
+@inproceedings{Cafagna2023HLDG,
+  title={HL Dataset: Grounding High-Level Linguistic Concepts in Vision},
+  author={Michele Cafagna and Kees van Deemter and Albert Gatt},
+  year={2023}
+}
+
+@article{mokady2021clipcap,
+  title={ClipCap: CLIP Prefix for Image Captioning},
+  author={Mokady, Ron and Hertz, Amir and Bermano, Amit H},
+  journal={arXiv preprint arXiv:2111.09734},
+  year={2021}
+}
 ```
-to unzip: unzip archive.zip -d ./dataset
+
