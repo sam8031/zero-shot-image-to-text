@@ -91,13 +91,14 @@ def train():
 
 
     dataset = image_caption_dataset(list_image_path, list_caption, preprocess)
-    train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
     loss_img = nn.CrossEntropyLoss()
     loss_caption = nn.CrossEntropyLoss()
     optimizer = Adam(model.parameters(), lr=5e-6, betas=(0.9,0.98), eps=1e-6, weight_decay=0.05)
 
     # Training loop
+    model.train()
     start_time = time.time()
     for epoch in range(EPOCH):
         total_loss = 0.0
@@ -114,7 +115,7 @@ def train():
 
             logit_scale = model.logit_scale.exp()
             logits_per_image, logits_per_caption = create_logits(image_embedding,caption_embedding,logit_scale)
-            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
+            ground_truth = ground_truth = torch.arange(BATCH_SIZE).to(device)
 
             total_loss = (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
             total_loss.backward()
