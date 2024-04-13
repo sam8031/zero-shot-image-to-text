@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 import csv
 
 BATCH_SIZE = 32
-EPOCH = 1
+EPOCH = 50
 TRAIN_FILE = "./dataset/training.csv"
 IMAGE_DIR = "dataset/images/"
 
@@ -63,7 +63,7 @@ def get_img_and_captions_paths():
         reader = csv.reader(csvFile, delimiter='|')
         next(reader)
         for row in reader:
-            image_name, caption = row[0], row[2]
+            image_name, caption = row[0].strip(), row[2].strip()
             list_image_path.append(IMAGE_DIR + image_name)
             list_captions.append(caption)
     return list_image_path, list_captions
