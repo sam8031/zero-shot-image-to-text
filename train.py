@@ -135,13 +135,13 @@ def train():
         # Print average loss for the epoch
         print(f"Average Loss for Epoch {epoch + 1}: {running_loss / len(train_dataloader)}")
 
-    # Save the model
-    torch.save({
-    'epoch': epoch,
-    'model_state_dict': model.state_dict(),
-    'optimizer_state_dict': optimizer.state_dict(),
-    'loss': total_loss,
-    },f"clip_model_epoch_{epoch + 1}.pt")
+        # Save checkpoint
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': total_loss,
+        }, f"checkpoints/clip_model_epoch_{epoch + 1}.pt")
 
     print('Time taken for epoch: {:.2f} seconds'.format(time.time() - start_time))
     progress_bar.clear()
