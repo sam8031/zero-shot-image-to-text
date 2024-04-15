@@ -4,5 +4,4 @@ clip_checkpoints/ViT-B-32.pt
 __pycache__/dataset.cpython-38.pyc
 __pycache__/clip_dataset.cpython-38.pyc
 __pycache__/clip_datsaset.cpython-38.pyc
-clip_model_epoch_1.pt
 dataset
