@@ -115,7 +115,7 @@ def train():
 
             logit_scale = model.logit_scale.exp()
             logits_per_image, logits_per_caption = create_logits(image_embedding,caption_embedding,logit_scale)
-            ground_truth = ground_truth = torch.arange(BATCH_SIZE).to(device)
+            ground_truth = torch.arange(BATCH_SIZE).to(device)
 
             total_loss = (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
             total_loss.backward()
