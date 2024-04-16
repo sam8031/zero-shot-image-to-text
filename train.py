@@ -10,42 +10,16 @@ from torch.utils.data import DataLoader, Dataset
 import csv
 
 BATCH_SIZE = 32
-EPOCH = 50
+EPOCH = 5
 TRAIN_FILE = "./dataset/training.csv"
+TEST_FILE = "./dataset/testing.csv"
 IMAGE_DIR = "dataset/images/"
 
-def create_logits(x1,x2,logit_scale):
-    x1 = x1 / x1.norm(dim=-1, keepdim=True)
-    x2 = x2 / x2.norm(dim=-1, keepdim=True)
-
-    # cosine similarity as logits
-    logits_per_x1 =  logit_scale*x1 @ x2.t()
-    logits_per_x2 =  logit_scale*x2 @ x1.t()
-
-    # shape = [global_batch_size, global_batch_size]
-    return logits_per_x1, logits_per_x2
-
-class CaptionCLIP(nn.Module):
-    def __init__(self, model) :
-        super(CaptionCLIP, self).__init__()
-        self.model = model
-
-    def forward(self,text):
-        return self.model.encode_text(text)
-
-class ImageCLIP(nn.Module):
-    def __init__(self, model) :
-        super(ImageCLIP, self).__init__()
-        self.model = model
-
-    def forward(self,image):
-        return self.model.encode_image(image)
-
 class image_caption_dataset(Dataset):
-    def __init__(self, list_image_path, list_captions, preprocess):
+    def __init__(self, list_image_path, list_caption, preprocess):
 
         self.image_path = list_image_path
-        self.captions  = clip.tokenize(list_captions, truncate=True)
+        self.captions  = clip.tokenize(list_caption, truncate=True)
         self.preprocess = preprocess
 
     def __len__(self):
@@ -56,10 +30,10 @@ class image_caption_dataset(Dataset):
         caption = self.captions[idx]
         return image,caption
 
-def get_img_and_captions_paths():
+def get_img_and_captions_paths(file):
     list_image_path = []
     list_captions = []
-    with open(TRAIN_FILE, "r", newline='') as csvFile:
+    with open(file, "r", newline='') as csvFile:
         reader = csv.reader(csvFile, delimiter='|')
         next(reader)
         for row in reader:
@@ -73,33 +47,56 @@ def convert_models_to_fp32(model):
         p.data = p.data.float()
         p.grad.data = p.grad.data.float()
 
+def validate(model, dataloader, loss_img, loss_caption, device):
+    model.eval()  # Set the model to evaluation mode
+    total_loss = 0.0
+
+    progress_bar = tqdm(enumerate(dataloader), total=len(dataloader), desc="Validation")
+    with torch.no_grad():
+        for batch_idx, batch in progress_bar:
+            images, captions = batch
+            images = images.to(device)
+            captions = captions.to(device)
+
+            logits_per_image, logits_per_caption = model(images, captions)
+
+            ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
+
+            total_loss += (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
+
+            progress_bar.set_postfix_str(f'Loss: {total_loss.item() / (batch_idx + 1):.5f}')
+
+    average_loss = total_loss / len(dataloader)
+    print(f"Validation Loss: {average_loss:.5f}")
+
 def train():
-    # Define the root directory and captions file
-
-
     # Load the CLIP model
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 
-    model_caption = CaptionCLIP(model)
-    model_image = ImageCLIP(model)
+    list_image_path, list_caption = get_img_and_captions_paths(TRAIN_FILE)
 
-    model_caption = nn.DataParallel(model_caption)
-    model_image = nn.DataParallel(model_image)
-
-    list_image_path, list_caption = get_img_and_captions_paths()
-
-
+    # load training data
     dataset = image_caption_dataset(list_image_path, list_caption, preprocess)
     train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
+    # load validation data
+    val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
+    val_dataset = image_caption_dataset(val_image_paths, val_captions, preprocess)
+    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True)
+
+    if device == "cpu":
+        model.float()
+    else:
+        clip.model.convert_weights(model)
+
     loss_img = nn.CrossEntropyLoss()
     loss_caption = nn.CrossEntropyLoss()
-    optimizer = Adam(model.parameters(), lr=5e-6, betas=(0.9,0.98), eps=1e-6, weight_decay=0.05)
+    optimizer = Adam(model.parameters(), lr=5e-5,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2)
 
     # Training loop
-    model.train()
     start_time = time.time()
+    model.train()
     for epoch in range(EPOCH):
         total_loss = 0.0
         print(f"Epoch {epoch + 1}/{EPOCH}")
@@ -110,12 +107,12 @@ def train():
 
             images, captions = batch
 
-            image_embedding = model_image(images)
-            caption_embedding = model_caption(captions)
+            images= images.to(device)
+            captions = captions.to(device)
 
-            logit_scale = model.logit_scale.exp()
-            logits_per_image, logits_per_caption = create_logits(image_embedding,caption_embedding,logit_scale)
-            ground_truth = torch.arange(BATCH_SIZE).to(device)
+            logits_per_image, logits_per_caption = model(images, captions)
+
+            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
 
             total_loss = (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
             total_loss.backward()
@@ -144,7 +141,12 @@ def train():
         }, f"checkpoints/clip_model_epoch_{epoch + 1}.pt")
 
     print('Time taken for epoch: {:.2f} seconds'.format(time.time() - start_time))
+
+    # Validation
+    validate(model, val_dataloader, loss_img, loss_caption, device)
+
     progress_bar.clear()
+
 
 if __name__ == "__main__":
     train()
