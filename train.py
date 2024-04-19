@@ -83,7 +83,7 @@ def train():
     # load validation data
     val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
     val_dataset = image_caption_dataset(val_image_paths, val_captions, preprocess)
-    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
     if device == "cpu":
         model.float()
