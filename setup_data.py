@@ -36,6 +36,5 @@ def setup_data():
 
   print("Data split into training and testing sets successfully.")
 
-
 if __name__ == '__main__':
   setup_data()
