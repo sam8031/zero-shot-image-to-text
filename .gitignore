@@ -5,3 +5,5 @@ __pycache__/dataset.cpython-38.pyc
 __pycache__/clip_dataset.cpython-38.pyc
 __pycache__/clip_datsaset.cpython-38.pyc
 dataset
+checkpoints_exp1
+checkpoints_exp2
