@@ -1,4 +1,5 @@
 from clipcap import ClipCaptionModel
+from train import get_img_and_captions_paths
 import torch
 from transformers import (
     GPT2Tokenizer,
@@ -16,6 +17,9 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 prefix_length = 10
+
+# load sample data
+img_paths, captions = get_img_and_captions_paths("./dataset/samples.csv")
 
 # load ClipCap
 model = ClipCaptionModel(prefix_length, tokenizer=tokenizer)

@@ -147,6 +147,5 @@ def train():
 
     progress_bar.clear()
 
-
 if __name__ == "__main__":
     train()
