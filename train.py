@@ -9,7 +9,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 import csv
 
-BATCH_SIZE = 1030
+BATCH_SIZE = 216
 EPOCH = 30
 TRAIN_FILE = "./dataset/training.csv"
 TEST_FILE = "./dataset/testing.csv"
@@ -89,7 +89,7 @@ def train():
 
     loss_img = nn.CrossEntropyLoss()
     loss_txt = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=5e-5,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2) #Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
+    optimizer = optim.Adam(model.parameters(), lr=1e-8,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2) #Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
 
     # Training loop
     start_time = time.time()

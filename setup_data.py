@@ -1,6 +1,6 @@
 import csv
 
-INPUT_FILE = "./dataset/results.csv"
+INPUT_FILE = "./dataset/results_new.csv"
 TRAIN_FILE = "./dataset/training.csv"
 TEST_FILE = "./dataset/testing.csv"
 TRAIN_PERCENTAGE = 0.7
@@ -11,9 +11,6 @@ def setup_data():
         reader = csv.reader(csvfile, delimiter='|')
         next(reader)  # Skip the header row
         data = [row for row in reader]
-
-    # Reorder the data by comment_number
-    data.sort(key=lambda x: int(x[1]))
 
     # Split the data into training and testing sets
     train_size = int(len(data) * TRAIN_PERCENTAGE)
