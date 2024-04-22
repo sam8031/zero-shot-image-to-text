@@ -1,7 +1,7 @@
 import clip.model
 import torch
 import clip
-from torch.optim import Adam
+from torch import optim
 import time
 import torch.nn as nn
 from tqdm import tqdm
@@ -9,26 +9,12 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 import csv
 
-BATCH_SIZE = 32
-EPOCH = 32
+BATCH_SIZE = 1030
+EPOCH = 30
 TRAIN_FILE = "./dataset/training.csv"
 TEST_FILE = "./dataset/testing.csv"
 IMAGE_DIR = "dataset/images/"
 
-class image_caption_dataset(Dataset):
-    def __init__(self, list_image_path, list_caption, preprocess):
-
-        self.image_path = list_image_path
-        self.captions  = clip.tokenize(list_caption, truncate=True)
-        self.preprocess = preprocess
-
-    def __len__(self):
-        return len(self.captions)
-
-    def __getitem__(self, idx):
-        image = self.preprocess(Image.open(self.image_path[idx])) # Image from PIL module
-        caption = self.captions[idx]
-        return image,caption
 
 def get_img_and_captions_paths(file):
     list_image_path = []
@@ -42,13 +28,7 @@ def get_img_and_captions_paths(file):
             list_captions.append(caption)
     return list_image_path, list_captions
 
-def convert_models_to_fp32(model):
-    for p in model.parameters():
-        p.data = p.data.float()
-        p.grad.data = p.grad.data.float()
-
 def validate(model, dataloader, loss_img, loss_caption, device):
-    model.eval()  # Set the model to evaluation mode
     total_loss = 0.0
 
     progress_bar = tqdm(enumerate(dataloader), total=len(dataloader), desc="Validation")
@@ -71,32 +51,48 @@ def validate(model, dataloader, loss_img, loss_caption, device):
 
 def train():
     # Load the CLIP model
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
+    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
+
+    class image_title_dataset(Dataset):
+        def __init__(self, list_image_path,list_txt):
+
+            self.image_path = list_image_path
+            self.title  = clip.tokenize(list_txt, truncate=True) #you can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
+
+        def __len__(self):
+            return len(self.title)
+
+        def __getitem__(self, idx):
+            image = preprocess(Image.open(self.image_path[idx])) # Image from PIL module
+            title = self.title[idx]
+            return image,title
 
     list_image_path, list_caption = get_img_and_captions_paths(TRAIN_FILE)
 
     # load training data
-    dataset = image_caption_dataset(list_image_path, list_caption, preprocess)
+    dataset = image_title_dataset(list_image_path, list_caption)
     train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, drop_last=True)
 
     # load validation data
     val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
-    val_dataset = image_caption_dataset(val_image_paths, val_captions, preprocess)
+    val_dataset = image_title_dataset(val_image_paths, val_captions)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, drop_last=True)
+
+    def convert_models_to_fp32(model):
+        for p in model.parameters():
+            p.data = p.data.float()
+            p.grad.data = p.grad.data.float()
 
     if device == "cpu":
         model.float()
-    else:
-        clip.model.convert_weights(model)
 
     loss_img = nn.CrossEntropyLoss()
-    loss_caption = nn.CrossEntropyLoss()
-    optimizer = Adam(model.parameters(), lr=5e-5,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2) #Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
+    loss_txt = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=5e-5,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2) #Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
 
     # Training loop
     start_time = time.time()
-    model.train()
     for epoch in range(EPOCH):
         total_loss = 0.0
         print(f"Epoch {epoch + 1}/{EPOCH}")
@@ -105,21 +101,21 @@ def train():
         for batch_idx, batch in progress_bar:
             optimizer.zero_grad()
 
-            images, captions = batch
+            images,texts = batch
 
             images= images.to(device)
-            captions = captions.to(device)
+            texts = texts.to(device)
 
-            logits_per_image, logits_per_caption = model(images, captions)
+            logits_per_image, logits_per_text = model(images, texts)
 
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
 
-            total_loss = (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
+            total_loss = (loss_img(logits_per_image,ground_truth) + loss_txt(logits_per_text,ground_truth))/2
             total_loss.backward()
 
             if device == "cpu":
                 optimizer.step()
-            else:
+            else :
                 convert_models_to_fp32(model)
                 optimizer.step()
                 clip.model.convert_weights(model)
@@ -143,7 +139,7 @@ def train():
     print('Time taken for epoch: {:.2f} seconds'.format(time.time() - start_time))
 
     # Validation
-    validate(model, val_dataloader, loss_img, loss_caption, device)
+    validate(model, val_dataloader, loss_img, loss_txt, device)
 
     progress_bar.clear()
 
