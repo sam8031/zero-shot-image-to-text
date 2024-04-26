@@ -21,13 +21,13 @@ def setup_data():
     # Write training data to CSV
     with open(TRAIN_FILE, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter='|')
-        writer.writerow(['image_name', 'comment_number', 'comment'])  # Header row
+        writer.writerow(['image_name', 'comment_number', 'comment']) # Header row
         writer.writerows(train_data)
 
     # Write testing data to CSV
     with open(TEST_FILE, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter='|')
-        writer.writerow(['image_name', 'comment_number', 'comment'])  # Header row
+        writer.writerow(['image_name', 'comment_number', 'comment']) # Header row
         writer.writerows(test_data)
 
     print("Data split into training and testing sets successfully.")

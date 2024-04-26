@@ -54,13 +54,13 @@ def validate(model, dataloader, loss_img, loss_caption, device):
 def train():
     # Load the CLIP model
     device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
-    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
+    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) # Must set jit=False for training
 
     class image_title_dataset(Dataset):
         def __init__(self, list_image_path,list_txt):
 
             self.image_path = list_image_path
-            self.title  = clip.tokenize(list_txt, truncate=True) #you can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
+            self.title  = clip.tokenize(list_txt, truncate=True) # You can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
 
         def __len__(self):
             return len(self.title)
@@ -70,13 +70,14 @@ def train():
             title = self.title[idx]
             return image,title
 
+    # Get paths and captions for training and testing
     list_image_path, list_caption = get_img_and_captions_paths(TRAIN_FILE)
 
-    # load training data
+    # Load training data
     dataset = image_title_dataset(list_image_path, list_caption)
     train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, drop_last=True)
 
-    # load validation data
+    # Load validation data
     val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
     val_dataset = image_title_dataset(val_image_paths, val_captions)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, drop_last=True)

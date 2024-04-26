@@ -1,38 +1,38 @@
+import torch
+import clip
+import requests
+
 from clipcap import ClipCaptionModel
 from train import get_img_and_captions_paths
-import torch
 from transformers import (
     GPT2Tokenizer,
     GPT2LMHeadModel,
 )
-import torch
-import clip
-import requests
 
 from PIL import Image
 
 model_path = "clipcap-base-captioning-ft-hl-narratives/pytorch_model.pt" # change accordingly
 
-# load clip
+# Load clip
 device = "cuda" if torch.cuda.is_available() else "cpu"
 clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 prefix_length = 10
 
-# load sample data
+# Load sample data
 img_paths, captions = get_img_and_captions_paths("./dataset/samples.csv")
 
-# load ClipCap
+# Load ClipCap
 model = ClipCaptionModel(prefix_length, tokenizer=tokenizer)
 model.from_pretrained(model_path)
 model = model.eval()
 model = model.to(device)
 
-# load the image
+# Load the image
 img_url = 'https://datasets-server.huggingface.co/assets/michelecafagna26/hl-narratives/--/default/train/3/image/image.jpg'
 raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
 
-# extract the prefix
+# Extract the prefix
 image = preprocess(raw_image).unsqueeze(0).to(device)
 with torch.no_grad():
     prefix = clip_model.encode_image(image).to(
@@ -40,7 +40,7 @@ with torch.no_grad():
     )
     prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
 
-# generate the caption
+# Generate the caption
 model.generate_beam(embed=prefix_embed)[0]
 
 # >> "He is riding a skateboard in a skate park, he wants to skate."
