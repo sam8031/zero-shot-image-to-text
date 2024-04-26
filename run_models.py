@@ -2,17 +2,16 @@ import time
 from train import image_caption_dataset, get_img_and_captions_paths
 import clip
 import torch
-from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
 
+from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
 from clipcap import ClipCaptionModel
 from train import get_img_and_captions_paths
-import torch
+
 from transformers import (
     GPT2Tokenizer,
     GPT2LMHeadModel,
 )
-import torch
-import clip
+
 import requests
 from PIL import Image
 

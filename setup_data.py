@@ -7,6 +7,7 @@ TRAIN_PERCENTAGE = 0.7
 TEST_PERCENTAGE = 0.3
 
 def setup_data():
+    # Split the input data into training and testing sets and write to CSV files
     with open(INPUT_FILE, 'r', newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter='|')
         next(reader)  # Skip the header row

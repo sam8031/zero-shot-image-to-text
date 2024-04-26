@@ -8,6 +8,7 @@ from transformers import (
 import torch
 import clip
 import requests
+
 from PIL import Image
 
 model_path = "clipcap-base-captioning-ft-hl-narratives/pytorch_model.pt" # change accordingly
@@ -31,7 +32,6 @@ model = model.to(device)
 img_url = 'https://datasets-server.huggingface.co/assets/michelecafagna26/hl-narratives/--/default/train/3/image/image.jpg'
 raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
 
-
 # extract the prefix
 image = preprocess(raw_image).unsqueeze(0).to(device)
 with torch.no_grad():
@@ -42,6 +42,5 @@ with torch.no_grad():
 
 # generate the caption
 model.generate_beam(embed=prefix_embed)[0]
-
 
 # >> "He is riding a skateboard in a skate park, he wants to skate."

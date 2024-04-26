@@ -1,13 +1,14 @@
 import clip.model
 import torch
 import clip
-from torch import optim
 import time
 import torch.nn as nn
+import csv
+
+from torch import optim
 from tqdm import tqdm
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
-import csv
 
 BATCH_SIZE = 216
 EPOCH = 30
@@ -15,8 +16,8 @@ TRAIN_FILE = "./dataset/training.csv"
 TEST_FILE = "./dataset/testing.csv"
 IMAGE_DIR = "dataset/images/"
 
-
 def get_img_and_captions_paths(file):
+    # Extract image paths and captions from the given CSV file
     list_image_path = []
     list_captions = []
     with open(file, "r", newline='') as csvFile:
@@ -29,6 +30,7 @@ def get_img_and_captions_paths(file):
     return list_image_path, list_captions
 
 def validate(model, dataloader, loss_img, loss_caption, device):
+    # Validate the model using the provided dataloader and calculate loss
     total_loss = 0.0
 
     progress_bar = tqdm(enumerate(dataloader), total=len(dataloader), desc="Validation")
@@ -107,7 +109,6 @@ def train():
             texts = texts.to(device)
 
             logits_per_image, logits_per_text = model(images, texts)
-
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
 
             total_loss = (loss_img(logits_per_image,ground_truth) + loss_txt(logits_per_text,ground_truth))/2
