@@ -1,5 +1,6 @@
-Several men play cards while around a green table.
-A bearded man , and a girl in a red dress are getting married.
-A man does acrobatics outside of a middle eastern style building.
-A crowd cheers on a baseball team.
-A man with a newspaper cart is standing in front of an information sign.
+image_name|comment_number|comment
+36979.jpg| 2| Several men play cards while around a green table .
+65567.jpg| 0| A bearded man , and a girl in a red dress are getting married .
+81641.jpg| 0| A man does acrobatics outside of a middle eastern style building .
+134206.jpg| 3| A crowd cheers on a baseball team .
+148284.jpg| 3| A man with a newspaper cart is standing in front of an information sign .

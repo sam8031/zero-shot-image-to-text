@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 import csv
 
 BATCH_SIZE = 216
-EPOCH = 30
+EPOCH = 60
 TRAIN_FILE = "./dataset/training.csv"
 TEST_FILE = "./dataset/testing.csv"
 IMAGE_DIR = "dataset/images/"
@@ -30,6 +30,7 @@ def get_img_and_captions_paths(file):
 
 def validate(model, dataloader, loss_img, loss_caption, device):
     total_loss = 0.0
+    running_loss = 0.0
 
     progress_bar = tqdm(enumerate(dataloader), total=len(dataloader), desc="Validation")
     with torch.no_grad():
@@ -42,17 +43,24 @@ def validate(model, dataloader, loss_img, loss_caption, device):
 
             ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
 
-            total_loss += (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
+            total_loss = (loss_img(logits_per_image, ground_truth) + loss_caption(logits_per_caption, ground_truth)) / 2
+            running_loss += total_loss.item()
 
-            progress_bar.set_postfix_str(f'Loss: {total_loss.item() / (batch_idx + 1):.5f}')
+            progress_bar.set_postfix_str(f'Loss: {total_loss.item():.5f}')
+            progress_bar.update()
 
-    average_loss = total_loss / len(dataloader)
+
+    average_loss = running_loss / len(dataloader)
     print(f"Validation Loss: {average_loss:.5f}")
 
 def train():
     # Load the CLIP model
     device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
     model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
+
+    checkpoint = torch.load("checkpoints/clip_model_epoch_30.pt")
+
+    model.load_state_dict(checkpoint['model_state_dict'])
 
     class image_title_dataset(Dataset):
         def __init__(self, list_image_path,list_txt):
@@ -93,7 +101,7 @@ def train():
 
     # Training loop
     start_time = time.time()
-    for epoch in range(EPOCH):
+    for epoch in range(30, EPOCH):
         total_loss = 0.0
         print(f"Epoch {epoch + 1}/{EPOCH}")
         running_loss = 0.0
@@ -144,4 +152,40 @@ def train():
     progress_bar.clear()
 
 if __name__ == "__main__":
-    train()
+    # train()
+    device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
+    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
+
+    for i in range(37):
+        print(f"Epoch: {i+1}")
+        checkpoint = torch.load(f"checkpoints/clip_model_epoch_{i+1}.pt")
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        class image_title_dataset(Dataset):
+            def __init__(self, list_image_path,list_txt):
+
+                self.image_path = list_image_path
+                self.title  = clip.tokenize(list_txt, truncate=True) #you can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
+
+            def __len__(self):
+                return len(self.title)
+
+            def __getitem__(self, idx):
+                image = preprocess(Image.open(self.image_path[idx])) # Image from PIL module
+                title = self.title[idx]
+                return image,title
+
+        # load validation data
+        val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
+        val_dataset = image_title_dataset(val_image_paths, val_captions)
+        val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, drop_last=True)
+
+        if device == "cpu":
+            model.float()
+
+        loss_img = nn.CrossEntropyLoss()
+        loss_txt = nn.CrossEntropyLoss()
+
+        # Validation
+        validate(model, val_dataloader, loss_img, loss_txt, device)
+

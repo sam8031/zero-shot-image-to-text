@@ -1,8 +1,14 @@
 import time
-from train import image_caption_dataset, get_img_and_captions_paths
+from train import get_img_and_captions_paths
 import clip
 import torch
+import matplotlib as plt
 from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
+from model.ZeroCLIP import CLIPTextGenerator
+from transformers import CLIPProcessor, CLIPModel
+from sklearn.metrics.pairwise import cosine_similarity
+from statistics import mean
+from torchvision.transforms import functional as F
 
 from clipcap import ClipCaptionModel
 from train import get_img_and_captions_paths
@@ -13,56 +19,60 @@ from transformers import (
 )
 import torch
 import clip
-import requests
 from PIL import Image
+from nltk.translate.bleu_score import sentence_bleu
 
-model_path = "clipcap-base-captioning-ft-hl-narratives/pytorch_model.pt" # change accordingly
+TEST_SAMPLES = "./test_images/test"
 
-def run_clip_cap_model():
+def run_clip_cap_model(use_train):
   # load clip
   device = "cuda" if torch.cuda.is_available() else "cpu"
   clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
   tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
   prefix_length = 10
 
-  # load sample data
-  img_paths, captions = get_img_and_captions_paths("./dataset/samples.csv")
+  if use_train:
+    checkpoint = torch.load("clip_model_epoch_37.pt")
+    clip_model.load_state_dict(checkpoint['model_state_dict'])
 
-  # load ClipCap
+   # load ClipCap
   model = ClipCaptionModel(prefix_length, tokenizer=tokenizer)
-  model.from_pretrained(model_path)
+  list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
+
+
   model = model.eval()
   model = model.to(device)
 
-  # load the image
-  img_url = 'https://datasets-server.huggingface.co/assets/michelecafagna26/hl-narratives/--/default/train/3/image/image.jpg'
-  raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
+  clip_cap_generated_captions = []
+  for img_url in list_image_path:
+    raw_image = Image.open(img_url).convert('RGB')
 
-  # extract the prefix
-  image = preprocess(raw_image).unsqueeze(0).to(device)
-  with torch.no_grad():
-      prefix = clip_model.encode_image(image).to(
-          device, dtype=torch.float32
-      )
-      prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
+    # extract the prefix
+    image = preprocess(raw_image).unsqueeze(0).to(device)
+    with torch.no_grad():
+        prefix = clip_model.encode_image(image).to(
+            device, dtype=torch.float32
+        )
+        prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
 
-  # generate the caption
-  model.generate_beam(embed=prefix_embed)[0]
+    # generate the caption
+    print("Clip cap output" + model.generate_beam(embed=prefix_embed)[0])
+    clip_cap_generated_captions.append(model.generate_beam(embed=prefix_embed)[0])
 
-  # >> "He is riding a skateboard in a skate park, he wants to skate."
+    return clip_cap_generated_captions, list_image_path, list_caption
 
-def run_zero_clip_model():
-  image_dir = "dataset/images/"
-  captions_file = "dataset/captions.txt"
 
-  list_image_path, list_caption = get_img_and_captions_paths(captions_file, image_dir)
-  model = CLIPTextGenerator_multigpu()
+def run_zero_clip_model(use_train):
+  model = CLIPTextGenerator()
+  list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
+  zero_clip_genrated_captions = []
 
-  checkpoint = torch.load("clip_model_epoch_1.pt")
+  if use_train:
+    checkpoint = torch.load("clip_model_epoch_37.pt")
+    model.clip.load_state_dict(checkpoint['model_state_dict'])
 
-  model.clip.load_state_dict(checkpoint['model_state_dict'])
   start_time = time.time()
-  for image_path in list_image_path[:100]:
+  for image_path in list_image_path:
     image_features = model.get_img_feature([image_path], None)
     captions = model.run(image_features, "Image of", beam_size=5)
 
@@ -75,7 +85,105 @@ def run_zero_clip_model():
 
   print('Time taken for epoch: {:.2f} seconds'.format(time.time() - start_time))
 
-def compare_models():
+
+def calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, image_paths, ground_truth_captions):
+  # BLEU score
+  references = [caption.split(" ") for caption in ground_truth_captions]
+
+  clip_cap_tokens = [caption.split(" ") for caption in clip_cap_generated_captions]
+  zero_clip_tokens = [caption.split(" ") for caption in zero_clip_generated_captions]
+
+  clip_cap_bleu_scores = []
+  zero_clip_bleu_scores = []
+  # clip cap scores
+  for i, (reference, clip_cap_token) in enumerate(zip(references, clip_cap_tokens)):
+    bleu_score = sentence_bleu([reference], clip_cap_token)
+    print("Clip cap bleu score for pair", i + 1, ":", bleu_score)
+    clip_cap_bleu_scores.append(bleu_score)
+
+  # zero clip score
+  for i, (reference, zero_clip_token) in enumerate(zip(references, zero_clip_tokens)):
+    bleu_score = sentence_bleu([reference], zero_clip_token)
+    print("Clip cap bleu score for pair", i + 1, ":", bleu_score)
+    zero_clip_bleu_scores.append(bleu_score)
+
+
+  # clipScore
+  # Load and preprocess images
+  images = []
+  for path in image_paths:
+      img = Image.open(path).convert("RGB")
+      img = img.resize((224, 224))  # Resize image to expected size
+      img_tensor = F.to_tensor(img)
+      images.append(img_tensor)
+
+  # Stack image tensors into a single tensor
+  images_tensor = torch.stack(images)
+
+  # Load CLIP model and processor
+  clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+  clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+
+  clip_cap_clipScores = []
+  zero_clip_clipScores = []
+  # clip cap clipscore
+  # Tokenize and encode captions and images
+  inputs = clip_processor(text=clip_cap_generated_captions, images=images_tensor, return_tensors="pt", padding=True)
+  with torch.no_grad():
+      outputs = clip_model(**inputs)
+
+  # Get embeddings
+  caption_embeddings = outputs['text_features']
+  image_embeddings = outputs['image_features']
+
+  # Calculate cosine similarity between each caption and image pair
+  for i, (caption, image) in enumerate(zip(caption_embeddings, image_embeddings)):
+      similarity_score = cosine_similarity(caption.unsqueeze(0), image.unsqueeze(0)).item()
+      print("Clip Cap CLIPScore for Pair", i+1, ":", similarity_score)
+      clip_cap_clipScores.append(similarity_score)
+
+  # zero clip clipscore
+  # Tokenize and encode captions and images
+  inputs = clip_processor(text=zero_clip_generated_captions, images=images_tensor, return_tensors="pt", padding=True)
+  with torch.no_grad():
+      outputs = clip_model(**inputs)
+
+  # Get embeddings
+  caption_embeddings = outputs['text_features']
+  image_embeddings = outputs['image_features']
+
+  # Calculate cosine similarity between each caption and image pair
+  for i, (caption, image) in enumerate(zip(caption_embeddings, image_embeddings)):
+      similarity_score = cosine_similarity(caption.unsqueeze(0), image.unsqueeze(0)).item()
+      print("Clip Cap CLIPScore for Pair", i+1, ":", similarity_score)
+      clip_cap_clipScores.append(similarity_score)
+
+  return mean(clip_cap_bleu_scores), mean(clip_cap_clipScores), mean(zero_clip_bleu_scores), mean(zero_clip_clipScores)
+
+def generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore):
+   # Data
+    categories = ['Clip Cap BLEU Score', 'Clip Cap ClipScore', 'Zero Clip BLEU Score', 'Zero Clip ClipScore']
+    scores = [clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore]
+
+    # Creating bar plot
+    plt.bar(categories, scores, color=['blue', 'green', 'red', 'orange'])
+    plt.xlabel('Scores')
+    plt.ylabel('Values')
+    plt.title('Comparison of Scores')
+
+    # Saving as PDF
+    plt.savefig('scores_comparison.pdf')
+
+    # Displaying the plot
+    plt.show()
+
+
+
 
 if __name__ == '__main__':
-  run_model()
+  print("Running Clip Cap model", )
+  clip_cap_generated_captions, list_image_path, list_caption = run_clip_cap_model(True)
+  print("Running Zero Clip model")
+  zero_clip_generated_captions = run_zero_clip_model(True)
+  clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore = calculate_scores()
+  generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore)
