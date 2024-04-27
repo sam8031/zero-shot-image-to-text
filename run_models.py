@@ -66,7 +66,7 @@ def run_clip_cap_model(use_train):
 def run_zero_clip_model(use_train):
   model = CLIPTextGenerator()
   list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
-  zero_clip_genrated_captions = []
+  zero_clip_generated_captions = []
 
   if use_train:
     checkpoint = torch.load("clip_model_epoch_37.pt")
