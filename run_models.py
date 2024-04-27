@@ -10,7 +10,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from statistics import mean
 from torchvision.transforms import functional as F
 
-from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
 from clipcap import ClipCaptionModel
 from train import get_img_and_captions_paths
 
@@ -23,7 +22,7 @@ import clip
 from PIL import Image
 from nltk.translate.bleu_score import sentence_bleu
 
-TEST_SAMPLES = "./test_images/test"
+TEST_SAMPLES = "./test_images/test_captions.csv"
 
 def run_clip_cap_model(use_train):
   # load clip
@@ -33,14 +32,15 @@ def run_clip_cap_model(use_train):
   prefix_length = 10
 
   if use_train:
-    checkpoint = torch.load("clip_model_epoch_37.pt")
+    checkpoint = torch.load("checkpoints/clip_model_epoch_37.pt")
     clip_model.load_state_dict(checkpoint['model_state_dict'])
 
    # load ClipCap
   model = ClipCaptionModel(prefix_length, tokenizer=tokenizer)
   list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
 
-
+  model_path = "clipcap-base-captioning-ft-hl-narratives/pytorch_model.pt"
+  model.from_pretrained(model_path)
   model = model.eval()
   model = model.to(device)
 
@@ -57,10 +57,11 @@ def run_clip_cap_model(use_train):
         prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
 
     # generate the caption
-    print("Clip cap output" + model.generate_beam(embed=prefix_embed)[0])
-    clip_cap_generated_captions.append(model.generate_beam(embed=prefix_embed)[0])
+    caption = model.generate_beam(embed=prefix_embed)[0]
+    print("Clip cap output" + caption)
+    clip_cap_generated_captions.append(caption)
 
-    return clip_cap_generated_captions, list_image_path, list_caption
+  return clip_cap_generated_captions, list_image_path, list_caption
 
 
 def run_zero_clip_model(use_train):
@@ -69,7 +70,7 @@ def run_zero_clip_model(use_train):
   zero_clip_generated_captions = []
 
   if use_train:
-    checkpoint = torch.load("clip_model_epoch_37.pt")
+    checkpoint = torch.load("checkpoints/clip_model_epoch_37.pt")
     model.clip.load_state_dict(checkpoint['model_state_dict'])
 
   for image_path in list_image_path:
