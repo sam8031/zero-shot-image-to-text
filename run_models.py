@@ -10,9 +10,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 from statistics import mean
 from torchvision.transforms import functional as F
 
+from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
 from clipcap import ClipCaptionModel
 from train import get_img_and_captions_paths
-import torch
+
 from transformers import (
     GPT2Tokenizer,
     GPT2LMHeadModel,
@@ -71,7 +72,6 @@ def run_zero_clip_model(use_train):
     checkpoint = torch.load("clip_model_epoch_37.pt")
     model.clip.load_state_dict(checkpoint['model_state_dict'])
 
-  start_time = time.time()
   for image_path in list_image_path:
     image_features = model.get_img_feature([image_path], None)
     captions = model.run(image_features, "Image of", beam_size=5)
@@ -82,8 +82,10 @@ def run_zero_clip_model(use_train):
 
     print(captions)
     print('best clip:', "Image of" + captions[best_clip_idx])
+    zero_clip_generated_captions.append(captions[best_clip_idx])
 
-  print('Time taken for epoch: {:.2f} seconds'.format(time.time() - start_time))
+  return zero_clip_generated_captions
+
 
 
 def calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, image_paths, ground_truth_captions):

@@ -1,13 +1,14 @@
 import clip.model
 import torch
 import clip
-from torch import optim
 import time
 import torch.nn as nn
+import csv
+
+from torch import optim
 from tqdm import tqdm
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
-import csv
 
 BATCH_SIZE = 216
 EPOCH = 60
@@ -15,8 +16,8 @@ TRAIN_FILE = "./dataset/training.csv"
 TEST_FILE = "./dataset/testing.csv"
 IMAGE_DIR = "dataset/images/"
 
-
 def get_img_and_captions_paths(file):
+    # Extract image paths and captions from the given CSV file
     list_image_path = []
     list_captions = []
     with open(file, "r", newline='') as csvFile:
@@ -29,6 +30,7 @@ def get_img_and_captions_paths(file):
     return list_image_path, list_captions
 
 def validate(model, dataloader, loss_img, loss_caption, device):
+    # Validate the model using the provided dataloader and calculate loss
     total_loss = 0.0
     running_loss = 0.0
 
@@ -56,7 +58,7 @@ def validate(model, dataloader, loss_img, loss_caption, device):
 def train():
     # Load the CLIP model
     device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
-    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
+    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) # Must set jit=False for training
 
     checkpoint = torch.load("checkpoints/clip_model_epoch_30.pt")
 
@@ -66,7 +68,7 @@ def train():
         def __init__(self, list_image_path,list_txt):
 
             self.image_path = list_image_path
-            self.title  = clip.tokenize(list_txt, truncate=True) #you can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
+            self.title  = clip.tokenize(list_txt, truncate=True) # You can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
 
         def __len__(self):
             return len(self.title)
@@ -76,13 +78,14 @@ def train():
             title = self.title[idx]
             return image,title
 
+    # Get paths and captions for training and testing
     list_image_path, list_caption = get_img_and_captions_paths(TRAIN_FILE)
 
-    # load training data
+    # Load training data
     dataset = image_title_dataset(list_image_path, list_caption)
     train_dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, drop_last=True)
 
-    # load validation data
+    # Load validation data
     val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
     val_dataset = image_title_dataset(val_image_paths, val_captions)
     val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, drop_last=True)
@@ -115,7 +118,6 @@ def train():
             texts = texts.to(device)
 
             logits_per_image, logits_per_text = model(images, texts)
-
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
 
             total_loss = (loss_img(logits_per_image,ground_truth) + loss_txt(logits_per_text,ground_truth))/2
