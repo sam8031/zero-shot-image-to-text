@@ -21,6 +21,7 @@ def get_img_and_captions_paths(file):
     # Extract image paths and captions from the given CSV file
     list_image_path = []
     list_captions = []
+
     with open(file, "r", newline='') as csvFile:
         reader = csv.reader(csvFile, delimiter='|')
         next(reader)
@@ -28,6 +29,7 @@ def get_img_and_captions_paths(file):
             image_name, caption = row[0].strip(), row[2].strip()
             list_image_path.append(IMAGE_DIR + image_name)
             list_captions.append(caption)
+            
     return list_image_path, list_captions
 
 def validate(model, dataloader, loss_img, loss_caption, device):
@@ -52,13 +54,12 @@ def validate(model, dataloader, loss_img, loss_caption, device):
             progress_bar.set_postfix_str(f'Loss: {total_loss.item():.5f}')
             progress_bar.update()
 
-
     average_loss = running_loss / len(dataloader)
     print(f"Validation Loss: {average_loss:.5f}")
 
 def train():
     # Load the CLIP model
-    device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
+    device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training
     model, preprocess = clip.load("ViT-B/32",device=device,jit=False) # Must set jit=False for training
 
     checkpoint = torch.load("checkpoints/clip_model_epoch_30.pt")
@@ -69,7 +70,7 @@ def train():
         def __init__(self, list_image_path,list_txt):
 
             self.image_path = list_image_path
-            self.title  = clip.tokenize(list_txt, truncate=True) # You can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
+            self.title  = clip.tokenize(list_txt, truncate=True) # You can tokenize everything at once in here (slow at the beginning), or tokenize it in the training loop
 
         def __len__(self):
             return len(self.title)
@@ -101,7 +102,7 @@ def train():
 
     loss_img = nn.CrossEntropyLoss()
     loss_txt = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-8,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2) #Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
+    optimizer = optim.Adam(model.parameters(), lr=1e-8,betas=(0.9,0.98),eps=1e-6,weight_decay=0.2) # Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
 
     # Training loop
     start_time = time.time()
@@ -110,6 +111,7 @@ def train():
         print(f"Epoch {epoch + 1}/{EPOCH}")
         running_loss = 0.0
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
+
         for batch_idx, batch in progress_bar:
             optimizer.zero_grad()
 
@@ -154,8 +156,8 @@ def train():
 
     progress_bar.clear()
 
-
 def graph_train_results():
+    # Graphically visualize training and test losses stored in a CSV file
     train_losses = []
     test_losses = []
     with open("losses.csv", "r", newline='') as csvFile:
@@ -176,8 +178,6 @@ def graph_train_results():
     plt.grid(True)
     plt.savefig('losses_plot.pdf', format='pdf')
 
-
 if __name__ == "__main__":
     # train()
     graph_train_results()
-
