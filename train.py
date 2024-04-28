@@ -4,12 +4,12 @@ import clip
 import time
 import torch.nn as nn
 import csv
+import matplotlib.pyplot as plt
 
 from torch import optim
 from tqdm import tqdm
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
-import matplotlib.pyplot as plt
 
 BATCH_SIZE = 216
 EPOCH = 60

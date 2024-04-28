@@ -1,13 +1,11 @@
 import re
 
+# Extracts losses from an input file and writes them to an output file
 def extract_losses(input_file, output_file):
-    # Extracts losses from an input file and writes them to an output file
-
     # Store extracted losses
     losses = []
 
     with open(input_file, 'r', encoding='utf-8') as infile:
-        # Iterate through each line in the input file
         for line in infile:
             # Use regular expression to search for loss pattern in the line
             match = re.search(r'Average Loss for Epoch \d+: ([0-9]+\.[0-9]{5,})', line)
@@ -16,7 +14,7 @@ def extract_losses(input_file, output_file):
                 loss = match.group(1)
                 losses.append(loss)
 
-    # Open output file for writing
+    # Output file for writing
     with open(output_file, 'w', encoding='utf-8') as outfile:
         # Write the extracted losses to the output file, separated by commas
         outfile.write(',\n'.join(losses))

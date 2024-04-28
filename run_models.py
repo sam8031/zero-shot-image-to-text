@@ -26,7 +26,7 @@ from nltk.translate.bleu_score import sentence_bleu
 TEST_SAMPLES = "./test_images/test_captions.csv"
 
 def run_clip_cap_model(use_train):
-  # Load clip
+  # Load Clip
   device = "cuda" if torch.cuda.is_available() else "cpu"
   clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
   tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
@@ -65,7 +65,7 @@ def run_clip_cap_model(use_train):
   return clip_cap_generated_captions, list_image_path, list_caption
 
 def run_zero_clip_model(use_train):
-  # Generate captions using the Zero-shot CLIP model
+  # Generate captions using the Zero-Shot CLIP model
   model = CLIPTextGenerator()
   list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
   zero_clip_generated_captions = []

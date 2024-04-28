@@ -3,6 +3,7 @@ import os
 import pkg_resources
 from setuptools import setup, find_packages
 
+# Setup configuration for the "zero-shot-image-to-text" package, including metadata, package inclusion, and dependencies
 setup(
     name="zero-shot-image-to-text",
     py_modules=["zero-shot-image-to-text"],

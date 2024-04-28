@@ -11,7 +11,7 @@ from transformers import (
 
 from PIL import Image
 
-model_path = "clipcap-base-captioning-ft-hl-narratives/pytorch_model.pt" # change accordingly
+model_path = "clipcap-base-captioning-ft-hl-narratives/pytorch_model.pt" # Change accordingly
 
 # Load clip
 device = "cuda" if torch.cuda.is_available() else "cpu"
