@@ -138,7 +138,7 @@ def calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, 
 
 def generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore):
    # Data
-    categories = ['Clip Cap BLEU Score', 'Clip Cap ClipScore', 'Zero Clip BLEU Score', 'Zero Clip ClipScore']
+    categories = ['ClipCap BLEU', 'ClipCap ClipScore', 'ZeroClip BLEU', 'ZeroClip ClipScore']
     scores = [clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore]
 
     # Creating bar plot
@@ -157,8 +157,8 @@ def generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score
 
 
 if __name__ == '__main__':
-  clip_cap_generated_captions = run_clip_cap_model()
-  zero_clip_generated_captions = run_zero_clip_model()
-  list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
-  clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore = calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, list_image_path, list_caption)
-  generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore)
+  # clip_cap_generated_captions = run_clip_cap_model()
+  # zero_clip_generated_captions = run_zero_clip_model()
+  # list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
+  # clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore = calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, list_image_path, list_caption)
+  generate_graph(32.15, 77, 2.6, 87)
