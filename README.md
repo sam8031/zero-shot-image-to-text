@@ -15,6 +15,14 @@
 
 ## Usage
 
+### To run run models
+pip install git+https://github.com/michelecafagna26/CLIPCap.git
+
+git lfs install # if not installed
+git clone https://huggingface.co/michelecafagna26/clipcap-base-captioning-ft-hl-narratives
+
+python3 run_models.py
+
 ### To run captioning on a single image:
 
 ```bash
@@ -69,6 +77,19 @@ $ CUDA_VISIBLE_DEVICES=0,1,2,3,4 python run.py
   title={Zero-Shot Image-to-Text Generation for Visual-Semantic Arithmetic},
   author={Tewel, Yoad and Shalev, Yoav and Schwartz, Idan and Wolf, Lior},
   journal={arXiv preprint arXiv:2111.14447},
+  year={2021}
+}
+
+@inproceedings{Cafagna2023HLDG,
+  title={HL Dataset: Grounding High-Level Linguistic Concepts in Vision},
+  author={Michele Cafagna and Kees van Deemter and Albert Gatt},
+  year={2023}
+}
+
+@article{mokady2021clipcap,
+  title={ClipCap: CLIP Prefix for Image Captioning},
+  author={Mokady, Ron and Hertz, Amir and Bermano, Amit H},
+  journal={arXiv preprint arXiv:2111.09734},
   year={2021}
 }
 
