@@ -1,0 +1,13 @@
+Without Train
+Clip cap bleu score: 0
+Zero Clip bleu score: 0
+Clip Cap CLIPScore  22.51801872253418
+Zero Clip CLIPScore  33.1323127746582
+
+
+with Train
+
+Clip cap bleu score: 0
+Zero Clip bleu score: 0
+Clip Cap CLIPScore  21.925189971923828
+Zero Clip CLIPScore  34.476261138916016

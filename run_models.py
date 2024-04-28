@@ -2,13 +2,14 @@ import time
 from train import get_img_and_captions_paths
 import clip
 import torch
-import matplotlib as plt
+import matplotlib.pyplot as plt
 from model.ZeroCLIP_batched import CLIPTextGenerator as CLIPTextGenerator_multigpu
 from model.ZeroCLIP import CLIPTextGenerator
 from transformers import CLIPProcessor, CLIPModel
 from sklearn.metrics.pairwise import cosine_similarity
 from statistics import mean
 from torchvision.transforms import functional as F
+from torchmetrics.multimodal.clip_score import CLIPScore
 
 from clipcap import ClipCaptionModel
 from train import get_img_and_captions_paths
@@ -124,44 +125,16 @@ def calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, 
   images_tensor = torch.stack(images)
 
   # Load CLIP model and processor
-  clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-  clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+  metric = CLIPScore(model_name_or_path="openai/clip-vit-base-patch32")
 
-  clip_cap_clipScores = []
-  zero_clip_clipScores = []
-  # clip cap clipscore
-  # Tokenize and encode captions and images
-  inputs = clip_processor(text=clip_cap_generated_captions, images=images_tensor, return_tensors="pt", padding=True)
-  with torch.no_grad():
-      outputs = clip_model(**inputs)
 
-  # Get embeddings
-  caption_embeddings = outputs['text_features']
-  image_embeddings = outputs['image_features']
+  clip_cap_clipScore = metric(images_tensor, clip_cap_generated_captions).item()
+  print("Clip Cap ClipScore: ", clip_cap_clipScore)
+  zero_clip_clipScore = metric(images_tensor, zero_clip_generated_captions).item()
+  print("Zero Clip ClipScore: ", zero_clip_clipScore)
 
-  # Calculate cosine similarity between each caption and image pair
-  for i, (caption, image) in enumerate(zip(caption_embeddings, image_embeddings)):
-      similarity_score = cosine_similarity(caption.unsqueeze(0), image.unsqueeze(0)).item()
-      print("Clip Cap CLIPScore for Pair", i+1, ":", similarity_score)
-      clip_cap_clipScores.append(similarity_score)
 
-  # zero clip clipscore
-  # Tokenize and encode captions and images
-  inputs = clip_processor(text=zero_clip_generated_captions, images=images_tensor, return_tensors="pt", padding=True)
-  with torch.no_grad():
-      outputs = clip_model(**inputs)
-
-  # Get embeddings
-  caption_embeddings = outputs['text_features']
-  image_embeddings = outputs['image_features']
-
-  # Calculate cosine similarity between each caption and image pair
-  for i, (caption, image) in enumerate(zip(caption_embeddings, image_embeddings)):
-      similarity_score = cosine_similarity(caption.unsqueeze(0), image.unsqueeze(0)).item()
-      print("Clip Cap CLIPScore for Pair", i+1, ":", similarity_score)
-      clip_cap_clipScores.append(similarity_score)
-
-  return mean(clip_cap_bleu_scores), mean(clip_cap_clipScores), mean(zero_clip_bleu_scores), mean(zero_clip_clipScores)
+  return mean(clip_cap_bleu_scores), clip_cap_clipScore, mean(zero_clip_bleu_scores), zero_clip_clipScore
 
 def generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore):
    # Data
@@ -184,9 +157,8 @@ def generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score
 
 
 if __name__ == '__main__':
-  print("Running Clip Cap model", )
-  clip_cap_generated_captions, list_image_path, list_caption = run_clip_cap_model(True)
-  print("Running Zero Clip model")
-  zero_clip_generated_captions = run_zero_clip_model(True)
-  clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore = calculate_scores()
+  clip_cap_generated_captions = run_clip_cap_model()
+  zero_clip_generated_captions = run_zero_clip_model()
+  list_image_path, list_caption = get_img_and_captions_paths(TEST_SAMPLES)
+  clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore = calculate_scores(clip_cap_generated_captions, zero_clip_generated_captions, list_image_path, list_caption)
   generate_graph(clip_cap_bleu_score, clip_cap_clipScore, zero_clip_bleu_score, zero_clip_clipScore)
