@@ -9,6 +9,7 @@ from torch import optim
 from tqdm import tqdm
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
 
 BATCH_SIZE = 216
 EPOCH = 60
@@ -153,41 +154,30 @@ def train():
 
     progress_bar.clear()
 
+
+def graph_train_results():
+    train_losses = []
+    test_losses = []
+    with open("losses.csv", "r", newline='') as csvFile:
+        reader = csv.reader(csvFile, delimiter=',')
+        next(reader)
+        for row in reader:
+            train_losses.append(float(row[0]))
+            test_losses.append(float(row[1]))
+
+    # Plotting
+    plt.figure(figsize=(10, 6))  # Adjust figure size if needed
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(test_losses, label='Test Loss', linestyle='--')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Test Losses')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('losses_plot.pdf', format='pdf')
+
+
 if __name__ == "__main__":
     # train()
-    device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
-    model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
-
-    for i in range(37):
-        print(f"Epoch: {i+1}")
-        checkpoint = torch.load(f"checkpoints/clip_model_epoch_{i+1}.pt")
-        model.load_state_dict(checkpoint['model_state_dict'])
-
-        class image_title_dataset(Dataset):
-            def __init__(self, list_image_path,list_txt):
-
-                self.image_path = list_image_path
-                self.title  = clip.tokenize(list_txt, truncate=True) #you can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
-
-            def __len__(self):
-                return len(self.title)
-
-            def __getitem__(self, idx):
-                image = preprocess(Image.open(self.image_path[idx])) # Image from PIL module
-                title = self.title[idx]
-                return image,title
-
-        # load validation data
-        val_image_paths, val_captions = get_img_and_captions_paths(TEST_FILE)
-        val_dataset = image_title_dataset(val_image_paths, val_captions)
-        val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, drop_last=True)
-
-        if device == "cpu":
-            model.float()
-
-        loss_img = nn.CrossEntropyLoss()
-        loss_txt = nn.CrossEntropyLoss()
-
-        # Validation
-        validate(model, val_dataloader, loss_img, loss_txt, device)
+    graph_train_results()
 
